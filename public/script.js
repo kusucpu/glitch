@@ -1,7 +1,11 @@
-const CHAT_URL = '/api/chat'; // proxy ke vercel function, api key aman di server
+const CHAT_URL_SERVER = '/api/chat';
+const CHAT_URL_DIRECT = 'https://text.pollinations.ai/openai';
 const IMG_URL = 'https://image.pollinations.ai/prompt/';
 const MAX_HISTORY = 20;
-const HISTORY_KEY = 'glitch_img_history';
+const HISTORY_KEY = 'glitck_img_history';
+const BYOK_KEY = 'glitck_user_apikey';
+const FREE_MODELS = ['qwen-safety'];
+const FREE_IMG_MODELS = ['flux', 'zimage'];
 
 const chat = document.getElementById('chat');
 const input = document.getElementById('input');
@@ -14,8 +18,14 @@ const overlay = document.getElementById('overlay');
 const closeHistory = document.getElementById('closeHistory');
 const historyContent = document.getElementById('historyContent');
 const clearHistory = document.getElementById('clearHistory');
+const keyStatus = document.getElementById('keyStatus');
+const modalOverlay = document.getElementById('modalOverlay');
+const keyInput = document.getElementById('keyInput');
+const saveKeyBtn = document.getElementById('saveKeyBtn');
+const cancelKeyBtn = document.getElementById('cancelKeyBtn');
+const removeKeyBtn = document.getElementById('removeKeyBtn');
 
-const SYSTEM_PROMPT = `You are glitch — a helpful AI assistant with a slightly unhinged, gen-Z personality. You're knowledgeable, witty, and occasionally go on unexpected tangents that are actually interesting.
+const SYSTEM_PROMPT = `You are glitck — a helpful AI assistant with a slightly unhinged, gen-Z personality. You're knowledgeable, witty, and occasionally go on unexpected tangents that are actually interesting.
 
 Rules:
 1. Always be genuinely helpful first
@@ -25,11 +35,91 @@ Rules:
    [IMG: detailed image prompt here]
    [IMG: another prompt if relevant]
 5. Make image prompts vivid and specific — good for AI image generation
-6. Never break character. You're glitch, not a generic assistant.`;
+6. Never break character. You're glitck, not a generic assistant.`;
 
 let messages = [{ role: 'system', content: SYSTEM_PROMPT }];
+let pendingModel = null;
 
-// Theme
+// ── BYOK ─────────────────────────────────────────────────────
+function getUserKey() {
+  return localStorage.getItem(BYOK_KEY) || null;
+}
+
+function setUserKey(k) {
+  localStorage.setItem(BYOK_KEY, k);
+  updateKeyStatus();
+}
+
+function removeUserKey() {
+  localStorage.removeItem(BYOK_KEY);
+  updateKeyStatus();
+}
+
+function updateKeyStatus() {
+  const k = getUserKey();
+  if (k) {
+    keyStatus.textContent = '⚿ your key active';
+    keyStatus.classList.add('active');
+    keyStatus.title = 'click to manage key';
+  } else {
+    keyStatus.classList.remove('active');
+  }
+}
+
+keyStatus.addEventListener('click', () => openModal(modelSelect.value));
+
+function openModal(model) {
+  pendingModel = model;
+  const k = getUserKey();
+  keyInput.value = k || '';
+  removeKeyBtn.style.display = k ? 'block' : 'none';
+  modalOverlay.classList.add('show');
+  keyInput.focus();
+}
+
+function closeModal(revertModel) {
+  modalOverlay.classList.remove('show');
+  if (revertModel && !getUserKey()) {
+    modelSelect.value = FREE_MODELS[0];
+  }
+  pendingModel = null;
+}
+
+saveKeyBtn.addEventListener('click', () => {
+  const k = keyInput.value.trim();
+  if (!k) { keyInput.focus(); return; }
+  setUserKey(k);
+  closeModal(false);
+});
+
+cancelKeyBtn.addEventListener('click', () => closeModal(true));
+modalOverlay.addEventListener('click', e => { if (e.target === modalOverlay) closeModal(true); });
+
+removeKeyBtn.addEventListener('click', () => {
+  removeUserKey();
+  keyInput.value = '';
+  removeKeyBtn.style.display = 'none';
+  modelSelect.value = FREE_MODELS[0];
+  closeModal(false);
+});
+
+keyInput.addEventListener('keydown', e => { if (e.key === 'Enter') saveKeyBtn.click(); });
+
+// Intercept model change — show modal for non-free models if no key
+modelSelect.addEventListener('change', () => {
+  const v = modelSelect.value;
+  if (!FREE_MODELS.includes(v) && !getUserKey()) {
+    openModal(v);
+  }
+});
+
+// ── IMAGE MODEL SELECT ────────────────────────────────────────
+function getImgModel() {
+  // For now always pick from free list; could expose UI later
+  return 'flux';
+}
+
+// ── THEME ─────────────────────────────────────────────────────
 const html = document.documentElement;
 const themes = ['auto', 'dark', 'light'];
 let themeIdx = 0;
@@ -40,7 +130,7 @@ themeBtn.addEventListener('click', () => {
   themeBtn.textContent = themeIdx === 0 ? '◑' : themeIdx === 1 ? '●' : '○';
 });
 
-// Auto-resize textarea
+// ── TEXTAREA ──────────────────────────────────────────────────
 input.addEventListener('input', () => {
   input.style.height = 'auto';
   input.style.height = Math.min(input.scrollHeight, 120) + 'px';
@@ -52,7 +142,7 @@ input.addEventListener('keydown', e => {
 
 sendBtn.addEventListener('click', send);
 
-// History panel
+// ── HISTORY PANEL ─────────────────────────────────────────────
 historyBtn.addEventListener('click', () => {
   historyPanel.classList.add('open');
   overlay.classList.add('show');
@@ -84,7 +174,7 @@ function saveToHistory(prompt, url) {
 }
 
 function deleteFromHistory(ts) {
-  let h = getHistory().filter(i => i.ts !== ts);
+  const h = getHistory().filter(i => i.ts !== ts);
   localStorage.setItem(HISTORY_KEY, JSON.stringify(h));
   renderHistory();
 }
@@ -106,15 +196,16 @@ function renderHistory() {
   `).join('');
 }
 
+// ── UTILS ─────────────────────────────────────────────────────
 function escHtml(s) {
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 function scrollBottom() {
-  const wrap = document.getElementById('chatWrap');
-  wrap.scrollTop = wrap.scrollHeight;
+  document.getElementById('chatWrap').scrollTop = 99999;
 }
 
+// ── CHAT UI ───────────────────────────────────────────────────
 function addMsg(role, html_content) {
   const div = document.createElement('div');
   div.className = `msg ${role}`;
@@ -149,34 +240,32 @@ function parseResponse(text) {
 }
 
 function renderBotMsg(text, imgPrompts) {
-  const safeText = escHtml(text).replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  let html_content = safeText;
-
+  const safe = escHtml(text).replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  let content = safe;
   if (imgPrompts.length) {
     const btns = imgPrompts.map(p =>
       `<button class="img-prompt-btn" data-prompt="${escHtml(p)}">${escHtml(p)}</button>`
     ).join('');
-    html_content += `<div class="img-prompts">${btns}</div>`;
+    content += `<div class="img-prompts">${btns}</div>`;
   }
-
-  const div = addMsg('bot', html_content);
-
-  // Attach click handlers
+  const div = addMsg('bot', content);
   div.querySelectorAll('.img-prompt-btn').forEach(btn => {
     btn.addEventListener('click', () => generateImage(btn, btn.dataset.prompt));
   });
 }
 
+// ── IMAGE GENERATION ──────────────────────────────────────────
 async function generateImage(btn, prompt) {
   if (btn.classList.contains('loading')) return;
   btn.classList.add('loading');
   btn.textContent = 'generating...';
 
-  const encodedPrompt = encodeURIComponent(prompt);
-  const imgSrc = `${IMG_URL}${encodedPrompt}?width=768&height=512&model=flux&nologo=true`;
+  const model = getImgModel();
+  const userKey = getUserKey();
+  const keyParam = userKey ? `&key=${encodeURIComponent(userKey)}` : '';
+  const imgSrc = `${IMG_URL}${encodeURIComponent(prompt)}?width=768&height=512&model=${model}&nologo=true${keyParam}`;
 
   try {
-    // Preload image
     await new Promise((res, rej) => {
       const img = new Image();
       img.onload = res;
@@ -184,7 +273,6 @@ async function generateImage(btn, prompt) {
       img.src = imgSrc;
     });
 
-    // Insert image below the button group
     const imgDiv = document.createElement('div');
     imgDiv.className = 'gen-img';
     imgDiv.innerHTML = `
@@ -196,11 +284,12 @@ async function generateImage(btn, prompt) {
     btn.remove();
     scrollBottom();
   } catch {
-    btn.textContent = 'failed, try again';
+    btn.textContent = 'failed — try again';
     btn.classList.remove('loading');
   }
 }
 
+// ── SEND MESSAGE ──────────────────────────────────────────────
 async function send() {
   const text = input.value.trim();
   if (!text) return;
@@ -213,27 +302,38 @@ async function send() {
   messages.push({ role: 'user', content: text });
 
   const typing = addTyping();
+  const userKey = getUserKey();
+  const model = modelSelect.value;
 
   try {
-    const res = await fetch(CHAT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: modelSelect.value,
-        messages,
-        temperature: 0.85,
-        max_tokens: 800
-      })
-    });
+    let res, data;
 
-    const data = await res.json();
+    if (userKey) {
+      // BYOK — direct to Pollinations, never touches our server
+      res = await fetch(CHAT_URL_DIRECT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${userKey}`
+        },
+        body: JSON.stringify({ model, messages, temperature: 0.85, max_tokens: 800 })
+      });
+    } else {
+      // Free tier — proxy via our Vercel function (key hidden server-side)
+      res = await fetch(CHAT_URL_SERVER, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model, messages })
+      });
+    }
+
+    data = await res.json();
     typing.remove();
 
-    if (!res.ok) throw new Error(data.error?.message || 'API error');
+    if (!res.ok) throw new Error(data.error?.message || `error ${res.status}`);
 
-    const reply = data.choices?.[0]?.message?.content || 'hmm. nothing came out.';
+    const reply = data.choices?.[0]?.message?.content || 'hmm. nothing.';
     messages.push({ role: 'assistant', content: reply });
-
     const { text: cleanText, imgPrompts } = parseResponse(reply);
     renderBotMsg(cleanText, imgPrompts);
 
@@ -245,3 +345,6 @@ async function send() {
   sendBtn.disabled = false;
   input.focus();
 }
+
+// ── INIT ──────────────────────────────────────────────────────
+updateKeyStatus();
