@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>glitch.</title>
+  <title>glitck.</title>
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>◈</text></svg>">
 </head>
@@ -23,7 +23,7 @@
         <div class="msg bot">
           <div class="avatar">◈</div>
           <div class="bubble">
-            hey. i'm <strong>glitch</strong> — your slightly unhinged AI assistant.<br>
+            hey. i'm <strong>glitck</strong> — your slightly unhinged AI assistant.<br>
             ask me anything. i'll answer. probably correctly.<br>
             <span class="hint">💡 if i suggest an image prompt, click it to generate.</span>
           </div>
@@ -38,14 +38,21 @@
       </div>
       <div class="model-row">
         <select id="modelSelect">
-          <option value="openai">openai (gpt-5)</option>
-          <option value="openai-fast">openai fast</option>
-          <option value="mistral">mistral</option>
-          <option value="claude-hybridspace">claude</option>
-          <option value="gemini">gemini</option>
-          <option value="deepseek">deepseek</option>
+          <optgroup label="— free, no key needed —">
+            <option value="qwen-safety">Qwen free</option>
+          </optgroup>
+          <optgroup label="— bring your own key —">
+            <option value="nova-fast">Nova</option>
+            <option value="gemini-fast">Gemini</option>
+            <option value="mistral">Mistral</option>
+            <option value="qwen-coder">Qwen</option>
+            <option value="gemini">Gemini</option>
+            <option value="deepseek">DeepSeek</option>
+            <option value="openai-fast">OpenAI</option>
+          </optgroup>
         </select>
-        <span class="powered">via pollinations.ai</span>
+        <span id="keyStatus" class="key-status"></span>
+        <span class="powered">pollinations.ai</span>
       </div>
     </div>
 
@@ -63,6 +70,31 @@
       <button id="clearHistory" class="clear-btn">clear all</button>
     </div>
   </aside>
+
+  <!-- BYOK Modal -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <div class="modal-tag">◈ glitck. / bring your own key</div>
+      <h2 class="modal-title">unlock all models</h2>
+      <p class="modal-desc">
+        this model needs your pollinations API key.<br>
+        your key is stored locally — never sent to our server.
+      </p>
+      <input type="password" id="keyInput" class="key-input" placeholder="paste your key here...">
+      <div class="modal-actions">
+        <button id="saveKeyBtn" class="modal-btn primary">save & unlock ↗</button>
+        <button id="cancelKeyBtn" class="modal-btn">cancel</button>
+      </div>
+      <div class="modal-footer">
+        don't have a key? →
+        <a href="https://enter.pollinations.ai" target="_blank" rel="noopener" class="modal-link">
+          enter.pollinations.ai ↗
+        </a>
+        <br>
+        <button id="removeKeyBtn" class="modal-remove" style="display:none">remove saved key</button>
+      </div>
+    </div>
+  </div>
 
   <script src="script.js"></script>
 </body>
