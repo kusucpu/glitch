@@ -4,7 +4,7 @@ const IMG_URL = 'https://image.pollinations.ai/prompt/';
 const MAX_HISTORY = 20;
 const HISTORY_KEY = 'glitck_img_history';
 const BYOK_KEY = 'glitck_user_apikey';
-const FREE_MODELS = ['qwen-safety'];
+const FREE_MODELS = ['qwen-coder'];
 const FREE_IMG_MODELS = ['flux', 'zimage'];
 
 const chat = document.getElementById('chat');
@@ -58,9 +58,9 @@ function removeUserKey() {
 function updateKeyStatus() {
   const k = getUserKey();
   if (k) {
-    keyStatus.textContent = '⚿ your key active';
+    keyStatus.textContent = '🌸 pollen active';
     keyStatus.classList.add('active');
-    keyStatus.title = 'click to manage key';
+    keyStatus.title = 'click to manage your pollen key';
   } else {
     keyStatus.classList.remove('active');
   }
