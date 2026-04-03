@@ -15,8 +15,10 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { messages, model = 'openai', userKey } = req.body;
+  const { messages, model = 'nova-fast', userKey } = req.body;
   if (!messages?.length) return res.status(400).json({ error: 'messages required' });
+
+  let apiKey = null;
 
   if (userKey) {
     if (!BYOP_MODELS.includes(model)) return res.status(403).json({ error: 'model not available' });
@@ -24,7 +26,7 @@ export default async function handler(req, res) {
   } else if (FREE_MODELS.includes(model)) {
     apiKey = process.env.POLLINATIONS_API_KEY || null;
   } else {
-    return res.status(403).json({ error: 'bring your own pollen key to use this model' });
+    return res.status(403).json({ error: 'bring your own pollen to use this model' });
   }
 
   const headers = { 'Content-Type': 'application/json' };
