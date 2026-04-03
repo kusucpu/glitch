@@ -1,9 +1,15 @@
-const CHAT_URL = '/api/chat'; // semua request lewat sini, CORS aman
+const CHAT_URL = '/api/chat';
 const IMG_URL = 'https://image.pollinations.ai/prompt/';
 const MAX_HISTORY = 20;
 const HISTORY_KEY = 'glitck_img_history';
 const BYOK_KEY = 'glitck_user_apikey';
-const FREE_MODELS = ['qwen-coder'];
+const FREE_MODELS = ['nova-fast'];
+const BYOP_MODELS = [
+  'nova-fast', 'qwen-safety', 'gemini-fast', 'mistral', 'qwen-coder',
+  'gemini-search', 'perplexity-fast', 'openai-fast', 'openai',
+  'qwen-vision', 'minimax', 'deepseek', 'perplexity-reasoning',
+  'openai-audio', 'midijourney', 'claude-fast', 'kimi', 'glm', 'qwen-large'
+];
 const FREE_IMG_MODELS = ['flux', 'zimage'];
 
 const chat = document.getElementById('chat');
@@ -104,7 +110,7 @@ removeKeyBtn.addEventListener('click', () => {
 
 keyInput.addEventListener('keydown', e => { if (e.key === 'Enter') saveKeyBtn.click(); });
 
-// Intercept model change — show modal for non-free models if no key
+// Intercept model change — show modal for BYOP models if no key
 modelSelect.addEventListener('change', () => {
   const v = modelSelect.value;
   if (!FREE_MODELS.includes(v) && !getUserKey()) {
@@ -259,10 +265,10 @@ async function generateImage(btn, prompt) {
   btn.classList.add('loading');
   btn.textContent = 'generating...';
 
-  const model = getImgModel();
   const userKey = getUserKey();
   const keyParam = userKey ? `&key=${encodeURIComponent(userKey)}` : '';
-  const imgSrc = `${IMG_URL}${encodeURIComponent(prompt)}?width=768&height=512&model=${model}&nologo=true${keyParam}`;
+  const nologo = userKey ? '&nologo=true' : '';
+  const imgSrc = `${IMG_URL}${encodeURIComponent(prompt)}?width=768&height=512&model=${model}${nologo}${keyParam}`;
 
   try {
     await new Promise((res, rej) => {
