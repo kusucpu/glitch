@@ -1,4 +1,10 @@
-const FREE_MODELS = ['qwen-coder'];
+const FREE_MODELS = ['nova-fast'];
+const BYOP_MODELS = [
+  'nova-fast', 'qwen-safety', 'gemini-fast', 'mistral', 'qwen-coder',
+  'gemini-search', 'perplexity-fast', 'openai-fast', 'openai',
+  'qwen-vision', 'minimax', 'deepseek', 'perplexity-reasoning',
+  'openai-audio', 'midijourney', 'claude-fast', 'kimi', 'glm', 'qwen-large'
+];
 const POLLINATIONS_URL = 'https://text.pollinations.ai/openai';
 
 export default async function handler(req, res) {
@@ -9,41 +15,40 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { messages, model = 'qwen-coder', userKey } = req.body;
+  const { messages, model = 'openai', userKey } = req.body;
   if (!messages?.length) return res.status(400).json({ error: 'messages required' });
 
-  // Pilih key: userKey dari request, atau server key untuk free model
-  let apiKey = null;
   if (userKey) {
-    apiKey = userKey; // BYOP: pakai pollen user sendiri
+    if (!BYOP_MODELS.includes(model)) return res.status(403).json({ error: 'model not available' });
+    apiKey = userKey;
   } else if (FREE_MODELS.includes(model)) {
-    apiKey = process.env.POLLINATIONS_API_KEY; // Free: pakai key server
+    apiKey = process.env.POLLINATIONS_API_KEY || null;
   } else {
-    return res.status(403).json({ error: 'this model requires your own pollen key' });
+    return res.status(403).json({ error: 'bring your own pollen key to use this model' });
   }
+
+  const headers = { 'Content-Type': 'application/json' };
+  if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
 
   try {
     const upstream = await fetch(POLLINATIONS_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(apiKey && { 'Authorization': `Bearer ${apiKey}` })
-      },
+      headers,
       body: JSON.stringify({ model, messages, temperature: 0.85, max_tokens: 800 })
     });
 
-    // Log response status untuk debug
+    const text = await upstream.text();
+
     if (!upstream.ok) {
-      const errText = await upstream.text();
-      console.error(`Pollinations error ${upstream.status}:`, errText);
-      return res.status(502).json({
-        error: `upstream error ${upstream.status}`,
-        detail: errText.slice(0, 200)
-      });
+      console.error(`Pollinations ${upstream.status}:`, text.slice(0, 300));
+      return res.status(502).json({ error: `upstream ${upstream.status}`, detail: text.slice(0, 200) });
     }
 
-    const data = await upstream.json();
-    return res.status(200).json(data);
+    try {
+      return res.status(200).json(JSON.parse(text));
+    } catch {
+      return res.status(502).json({ error: 'invalid JSON from upstream', detail: text.slice(0, 200) });
+    }
 
   } catch (err) {
     console.error('Fetch error:', err.message);
