@@ -173,13 +173,38 @@ textarea::placeholder { color: var(--text3); }
 
 /* ── Model row ── */
 .model-row {
-  display: flex; align-items: center; gap: 6px;
-  margin-top: 8px; flex-wrap: wrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+
+.model-row-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.model-row-right {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 select {
-  background: none; border: none; color: var(--text3);
-  font-family: var(--font); font-size: 12px; cursor: pointer; outline: none;
+  background: none;
+  border: none;
+  color: var(--text3);
+  font-family: var(--font);
+  font-size: 12px;
+  cursor: pointer;
+  outline: none;
+  max-width: 160px;
 }
 select option, select optgroup { background: var(--bg2); color: var(--text); }
 
@@ -187,15 +212,35 @@ select option, select optgroup { background: var(--bg2); color: var(--text); }
 
 /* ── Image controls ── */
 .img-controls {
-  display: flex; align-items: center; gap: 4px;
-  border: 1px solid var(--border); border-radius: 8px;
-  padding: 2px 6px; background: var(--bg2);
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg2);
+  flex-shrink: 0;
 }
 .img-controls select {
-  font-size: 11px; color: var(--text3); max-width: 80px;
+  font-size: 11px;
+  color: var(--text3);
+  padding: 3px 4px;
+  max-width: 72px;
 }
 .img-controls select:first-child {
-  border-right: 1px solid var(--border); padding-right: 4px; margin-right: 2px;
+  border-right: 1px solid var(--border);
+}
+
+/* ── Badge ── */
+.badge-link {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.badge-link img {
+  height: 18px;
+  width: auto;
+  display: block;
 }
 
 /* ── Key status ── */
@@ -300,11 +345,29 @@ select option, select optgroup { background: var(--bg2); color: var(--text); }
 /* ── Error ── */
 .bubble.error { color: #ff6b6b; border-color: #3a1a1a; background: #1a0e0e; }
 
-/* ── Mobile ── */
 @media (max-width: 480px) {
   .chat-wrap  { padding: 14px; }
   .input-area { padding: 12px 14px; }
   .bubble     { max-width: 90%; }
   .history-panel { width: 100%; right: -100%; }
-  .badge-link { display: none; }
+
+  select { font-size: 11px; max-width: 130px; }
+
+  .model-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    gap: 6px;
+    align-items: center;
+  }
+
+  #modelSelect    { grid-column: 1; grid-row: 1; }
+  #keyStatus      { grid-column: 2; grid-row: 1; justify-self: end; }
+
+  .img-controls   { grid-column: 1; grid-row: 2; }
+  .badge-link     { grid-column: 2; grid-row: 2; justify-self: end; }
+
+  .divider        { display: none; }
+
+  .badge-link img { height: 16px; }
 }
