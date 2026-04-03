@@ -2,7 +2,7 @@ const CHAT_URL = '/api/chat';
 const IMG_URL = 'https://image.pollinations.ai/prompt/';
 const MAX_HISTORY = 20;
 const HISTORY_KEY = 'glitck_img_history';
-const BYOK_KEY = 'glitck_user_apikey';
+const BYOP_KEY = 'glitck_user_pollen_key';
 const FREE_MODELS = ['nova-fast'];
 const BYOP_MODELS = [
   'nova-fast', 'qwen-safety', 'gemini-fast', 'mistral', 'qwen-coder',
@@ -10,7 +10,6 @@ const BYOP_MODELS = [
   'qwen-vision', 'minimax', 'deepseek', 'perplexity-reasoning',
   'openai-audio', 'midijourney', 'claude-fast', 'kimi', 'glm', 'qwen-large'
 ];
-const FREE_IMG_MODELS = ['flux', 'zimage'];
 
 const chat = document.getElementById('chat');
 const input = document.getElementById('input');
@@ -45,18 +44,18 @@ Rules:
 let messages = [{ role: 'system', content: SYSTEM_PROMPT }];
 let pendingModel = null;
 
-// ── BYOK ─────────────────────────────────────────────────────
+// ── BYOP ─────────────────────────────────────────────────────
 function getUserKey() {
-  return localStorage.getItem(BYOK_KEY) || null;
+  return localStorage.getItem(BYOP_KEY) || null;
 }
 
 function setUserKey(k) {
-  localStorage.setItem(BYOK_KEY, k);
+  localStorage.setItem(BYOP_KEY, k);
   updateKeyStatus();
 }
 
 function removeUserKey() {
-  localStorage.removeItem(BYOK_KEY);
+  localStorage.removeItem(BYOP_KEY);
   updateKeyStatus();
 }
 
@@ -110,19 +109,12 @@ removeKeyBtn.addEventListener('click', () => {
 
 keyInput.addEventListener('keydown', e => { if (e.key === 'Enter') saveKeyBtn.click(); });
 
-// Intercept model change — show modal for BYOP models if no key
 modelSelect.addEventListener('change', () => {
   const v = modelSelect.value;
   if (!FREE_MODELS.includes(v) && !getUserKey()) {
     openModal(v);
   }
 });
-
-// ── IMAGE MODEL SELECT ────────────────────────────────────────
-function getImgModel() {
-  // For now always pick from free list; could expose UI later
-  return 'flux';
-}
 
 // ── THEME ─────────────────────────────────────────────────────
 const html = document.documentElement;
@@ -266,9 +258,10 @@ async function generateImage(btn, prompt) {
   btn.textContent = 'generating...';
 
   const userKey = getUserKey();
+  const imgModel = 'flux';
   const keyParam = userKey ? `&key=${encodeURIComponent(userKey)}` : '';
   const nologo = userKey ? '&nologo=true' : '';
-  const imgSrc = `${IMG_URL}${encodeURIComponent(prompt)}?width=768&height=512&model=${model}${nologo}${keyParam}`;
+  const imgSrc = `${IMG_URL}${encodeURIComponent(prompt)}?width=768&height=512&model=${imgModel}${nologo}${keyParam}`;
 
   try {
     await new Promise((res, rej) => {
@@ -310,14 +303,13 @@ async function send() {
   const model = modelSelect.value;
 
   try {
-    // Semua request lewat Vercel function — solved CORS + key security
     const res = await fetch(CHAT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model,
         messages,
-        userKey: getUserKey() || undefined // undefined = tidak dikirim kalau kosong
+        userKey: getUserKey() || undefined
       })
     });
 
